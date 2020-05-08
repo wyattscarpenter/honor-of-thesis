@@ -18,138 +18,66 @@ Everything in this project is my original work, which I release into the public 
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 
 #include "wordlist.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define dputs(s) if(DEBUG){puts(s);}
 #define dprintf(...) if(DEBUG){fprintf (stderr, __VA_ARGS__); fflush(stdout);}
 
+long long unsigned int bignumber = 0;
 
-char *currentleftmostdigit = 0;
-char *currentrightmostdigit = 0;
+const int size = sizeof(wordlist)/sizeof(wordlist[0]);
 
-int chartoint(char c){return c - '0';}
-
-char inttochar(int i){return i + '0';}
-
-/*
-bool wordeq(char *word){
-  while(*word && word){
-    if 
-  }
-}
-*/
-
-char getnextdigit(){
-  if(currentrightmostdigit<currentleftmostdigit){
-    return '0'; //all numbers implicitly have an infinite number of 0s before them
-  } else {
-    return *(currentrightmostdigit--);
-  }
-}
-
-bool getnextbit(){
-  dputs("getnextbit");
-  //We have the problem that we want to get bits (here returned as bools)
-  //but a decimal digit has log base 2 of 10 bits, ie about 3.3 bits
-  //so we have to be a bit clever
-  static int bitsremaining = 0; //I think we actually need to expose this some how
-  static int bitbuffer = 0;
-  if(bitsremaining){
-    bool bit  = bitbuffer & 1;
-    bitbuffer = bitbuffer >> 1;
-    bitsremaining--;
-    return bit;
-  } else {
-    bitbuffer += chartoint(getnextdigit()); //I'm fairly certain + is the right operation to use here.
-    bitsremaining += 3; //waitaminute that can't be right TODO: fix this calculation?
-    //actually i think the above line still works, so long as we don't overflow int before we get to the end.
-    return getnextbit(); //lol
-  }
-}
-
-unsigned int intlog2(unsigned int logarand){ //rounds down
-  dputs("intlog2");
-  //dprintf("%u\n",logarand);
-  int result = -1;
-  while(logarand){
-    result++;
-    logarand>>=1;
-  }
-  dprintf("end intlog2 %u\n", result);
-  return (unsigned)result;
-}
-
-int intpow(int base, unsigned int exponent){
-  dputs("intpow");
-  //dprintf("%u\n",logarand);
-  int result = 1;
-  while(exponent>0){
-    result*=base;
-    exponent--;
-  }
-  return result;
-}
-
-char *getnextword(){
-  dputs("getnextword");
-  const int size = sizeof(wordlist)/sizeof(wordlist[0]);
-  dprintf("size %d\n", size);
-  const int bitcount = intlog2(size)+1;
-  dprintf("bitcount %d\n", bitcount);
-
-  //We have the problem that we want to get words (here stored as char pointers)
-  //but we don't necessary have a power of two number of words, which is what bits let us navigate
-  //so we have to be a bit clever
-  static int bitsremaining = 0;
-  static int bitbuffer = 0;
-  if(bitsremaining >= bitcount){ // checks if greater than or equal to log2 of ucpots
-    int remainder = bitbuffer - size; // take extra bits out
-    if(remainder >0){
-      bitbuffer -= remainder; // TODO: will this lead to biasing of output?
-    }
-    dprintf("bitbuffer %d\n", bitbuffer);
-    char *word =  wordlist[bitbuffer];
-    //dputs(word);
-    bitbuffer = bitbuffer >> bitcount; //shift by log2
-    bitbuffer += remainder; //add extra bits back in
-    bitsremaining-bitcount;
-    return word;
-  } else {
-    bitbuffer << 1;
-    bitbuffer += getnextbit(); //I'm fairly certain + is the right operation to use here.
-    bitsremaining++; //waitaminute that can't be right TODO: fix this calculation?
-    //actually i think the above line still works, so long as we don't overflow int before we get to the end.
-    return getnextword(); //lol
-  }
-}
-
-char *strend(char *s){ //get the pointer to the last (non-NU//L) character of a string
-  while(*s){
-    s++; //note that this only effects our copy. Hmm maybe I should remember how const works again.
-  }
-  return s-1; //s was the NUL so we return the one before it
+bool streq(const char *str1, const char *str2){
+  return !strcmp(str1, str2);
 }
 
 int putchars(char *chars){ //puts without newline
   while(*chars){putchar(*chars++);};
 }
 
-int main(int argc, char **argv){
-  if(argc<=1 || !argv[1] || !argv[1][0]){ //no arguments
-    //null sentence
-  } else {
-    //assume digit to word for now
-    currentleftmostdigit = argv[1];
-    currentrightmostdigit = strend(argv[1]);
-    //I don't like how you have to set this up and stuff but idk a cleaner way to do it man
-    while(currentrightmostdigit>=currentleftmostdigit){
-      dputs("main while");
-      putchars(getnextword());
-      putchar(' ');
+void embiggenificate(char * word){
+  static long long unsigned int embiggenificationcoef = 1;
+  for(int i = 0; i < size; i++){
+    if(streq(wordlist[i], word)){
+      bignumber+=i*embiggenificationcoef;
+      embiggenificationcoef*=size;
+      break;
     }
+  }
+}
+
+int main(int argc, char **argv){  
+  if(argc<=1 || !argv[1] || !argv[1][0]){ //no arguments
+    putchar('0');
+  } else if (isdigit(argv[1][0])) {
+    bignumber = /*(ong long unsigned int)*/atoll(argv[1]);
+    dprintf("bignumber %llu\n", bignumber);
+    dprintf("size %d\n", size);
+    while(bignumber){
+      putchars(wordlist[bignumber%size]);
+      putchar(' ');
+      bignumber /= size;
+    }
+  } else {
+    //sentence to digit
+    //check all arguments so the user can use bare words
+    int i = 1;
+    while(argv[i]){
+      char *word = strtok(argv[i]," ");
+      while(word){
+        dputs(word);
+        embiggenificate(word);
+	word = strtok(NULL," ");
+      }
+      i++;
+    }
+    printf("%llu", bignumber);
   }
   putchar('\n');
 }
