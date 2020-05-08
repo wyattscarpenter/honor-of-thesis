@@ -37,7 +37,7 @@ bool streq(const char *str1, const char *str2){
   return !strcmp(str1, str2);
 }
 
-int putchars(char *chars){ //puts without newline
+void putchars(char *chars){ //puts without newline
   while(*chars){putchar(*chars++);};
 }
 
